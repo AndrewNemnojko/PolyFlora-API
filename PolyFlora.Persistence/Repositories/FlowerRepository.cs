@@ -26,15 +26,15 @@ namespace PolyFlora.Persistence.Repositories
                 .Include(x => x.FlowerParent)
                 .Include(c => c.FlowerChildrens)
                 .AsNoTracking().ToListAsync(ct);
-
             return result;
         }
 
         public async Task<Flower?> GetByIdAsync(Guid id, CancellationToken ct)
         {
             var result = await _context.Flowers
-                //.Include(x => x.FlowerParent)
-                //.Include(c => c.FlowerChildrens)
+                .Include (x => x.Image)
+                .Include(x => x.FlowerParent)
+                .Include(c => c.FlowerChildrens)
                 .FirstOrDefaultAsync(f => f.Id == id, ct);
             return result;
         }
@@ -42,8 +42,9 @@ namespace PolyFlora.Persistence.Repositories
         public async Task<Flower?> GetByNameAsync(string name, CancellationToken ct)
         {
             var result = await _context.Flowers
-                //.Include(x => x.FlowerParent)
-                //.Include(c => c.FlowerChildrens)
+                .Include(x => x.Image)
+                .Include(x => x.FlowerParent)
+                .Include(c => c.FlowerChildrens)
                 .FirstOrDefaultAsync(f => f.TName == name, ct);
             return result;
         }

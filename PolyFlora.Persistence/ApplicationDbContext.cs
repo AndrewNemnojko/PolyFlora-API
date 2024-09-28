@@ -8,8 +8,10 @@ namespace PolyFlora.Persistence
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
-        { }
+        {}
         public DbSet<User> Users { get; set; }
         public DbSet<Flower> Flowers { get; set; }
+        public DbSet<Image> Images { get; set; }
+        public DbSet<Bouquet> Bouquets { get; set; }
     }
 }

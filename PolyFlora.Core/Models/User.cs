@@ -9,6 +9,7 @@ namespace PolyFlora.Core.Models
         public Guid Id { get; set; }
         public string Name { get; set; } = null!;
         public string Email { get; set; } = null!;
+        public Image? Image { get; set; }
         public string Adress { get; set; } = String.Empty;
         public string HashPassword { get; set; } = null!;
         public Role Role { get; set; } = Role.Member;

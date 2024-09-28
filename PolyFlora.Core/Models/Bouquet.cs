@@ -6,7 +6,7 @@ namespace PolyFlora.Core.Models
         public Guid Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public string TName { get; set; } = string.Empty; //TransliteratedName
-        public string PictureName = string.Empty;
+        public Image? Image { get; set; }
         public string Description { get; set; } = string.Empty;
         public bool Available { get; set; }
         public DateTime TimeStamp { get; set; } = DateTime.UtcNow;

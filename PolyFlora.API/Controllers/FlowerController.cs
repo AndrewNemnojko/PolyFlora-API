@@ -1,6 +1,7 @@
 ﻿
 using Microsoft.AspNetCore.Mvc;
-using PolyFlora.Application.Services;
+using PolyFlora.Application.DTOs.Flower;
+using PolyFlora.Application.Services.Domain;
 
 namespace PolyFlora.API.Controllers
 {
@@ -15,10 +16,20 @@ namespace PolyFlora.API.Controllers
         }
 
         [HttpGet]
+        [Route("/summary")]
+        public async Task<IActionResult> GetFlowersSummaryAsync(uint page, CancellationToken ct)
+        {
+            var result = await _flowerService.GetFlowersAsync<FlowerSummary>(page, ct);
+            return Ok(result);
+        }
+
+        [HttpGet]
         [Route("/name/{name}")]
         public async Task<IActionResult> GetFlowerByNameAsync(string name, CancellationToken ct)
         {
             var result = await _flowerService.GetFlowerByNameAsync(name, ct);
+            if (result == null)
+                return NotFound();
             return Ok(result);
         }
 
@@ -27,6 +38,16 @@ namespace PolyFlora.API.Controllers
         public async Task<IActionResult> GetFlowerByNameAsync(Guid id, CancellationToken ct)
         {
             var result = await _flowerService.GetFlowerByIdAsync(id, ct);
+            if (result == null)
+                return NotFound();
+            return Ok(result);
+        }
+
+        [HttpPost]
+        [Route("/")]
+        public async Task<IActionResult> CreateFlowerAsync([FromForm]FlowerCreateRequest request)
+        {
+            var result = await _flowerService.CreateFlowerAsync(request);
             return Ok(result);
         }
     }

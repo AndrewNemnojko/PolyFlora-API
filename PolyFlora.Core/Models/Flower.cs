@@ -6,7 +6,7 @@ namespace PolyFlora.Core.Models
         public Guid Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public string TName { get; set; } = string.Empty; //TransliteratedName
-        public string PictureName = string.Empty;
+        public Image? Image {  get; set; } 
         public string Description { get; set; } = string.Empty;
         public decimal Price { get; set; }
         public int InStock { get; set; }

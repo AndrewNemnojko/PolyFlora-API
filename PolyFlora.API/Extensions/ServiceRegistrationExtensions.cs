@@ -3,6 +3,9 @@
 using Microsoft.OpenApi.Models;
 using PolyFlora.Application.Interfaces.Auth;
 using PolyFlora.Application.Interfaces.Repositories;
+using PolyFlora.Application.Interfaces.Utilites;
+using PolyFlora.Application.Services.Domain;
+using PolyFlora.Application.Services.Utilites;
 using PolyFlora.Core.Interfaces;
 using PolyFlora.Infrastructure;
 using PolyFlora.Infrastructure.Security;
@@ -14,9 +17,19 @@ namespace PolyFlora.API.Extensions
     {
         public static void AddApplicationServices(this IServiceCollection services)
         {            
+            //Repository Services
             services.AddScoped<IFlowerRepository, FlowerRepository>();
-            services.AddScoped<ICacheService, RedisCacheService>(); 
+
+            //Utilites Services
+            services.AddScoped<ICacheService, RedisCacheService>();
             services.AddScoped<IJwtProvider, JwtProvider>();
+            services.AddScoped<TransliterationService>();
+            services.AddScoped<IImageService, ImageService>();
+
+            //Domain Services
+            services.AddScoped<FlowerService>();
+
+            
 
             //Swagger exts
             services.AddSwaggerGen(c =>
