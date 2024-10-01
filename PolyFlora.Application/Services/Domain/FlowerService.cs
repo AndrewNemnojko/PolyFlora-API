@@ -1,5 +1,6 @@
 ﻿
 using AutoMapper;
+using PolyFlora.Application.DTOs.Common;
 using PolyFlora.Application.DTOs.Flower;
 using PolyFlora.Application.Interfaces.Repositories;
 using PolyFlora.Application.Interfaces.Utilites;
@@ -70,7 +71,7 @@ namespace PolyFlora.Application.Services.Domain
             return mapModel;
         }
         
-        public async Task<FlowerDetail?> CreateFlowerAsync(FlowerCreateRequest request)
+        public async Task<FlowerDetail?> CreateFlowerAsync(FlowerRequest request)
         {            
             var flower = _mapper.Map<Flower>(request);           
             flower.TName = _transliterationService.ToUrlFriendly(request.Name);
@@ -85,7 +86,7 @@ namespace PolyFlora.Application.Services.Domain
                 }
             }
 
-            if (request.ParentId != null)
+            if (request.ParentId.HasValue)
             {
                 var parent = await _flowerRepository
                     .GetByIdAsync(request.ParentId.Value, CancellationToken.None);
@@ -93,7 +94,7 @@ namespace PolyFlora.Application.Services.Domain
                 if (parent != null)
                     flower.FlowerParent = parent;
             }
-            if (request.ChildrensIds != null)
+            if (request.ChildrensIds?.Any() == true)
             {
                 var childrens = await _flowerRepository
                     .GetFlowersByIdsAsync(request.ChildrensIds);
@@ -104,12 +105,73 @@ namespace PolyFlora.Application.Services.Domain
             return mapflower;
         }
 
-        public async Task<ICollection<T>> GetFlowersAsync<T>(uint page, CancellationToken ct)
+        public async Task<FlowerDetail?> ChangeFlowerAsync(Guid id, FlowerRequest request)
         {
-            var data = await _flowerRepository.GetAllAsync(ct);
-            var mapData = _mapper.Map<ICollection<T>>(data);
+            var existFlower = await _flowerRepository.GetByIdAsync(id, CancellationToken.None);
+            if (existFlower == null)
+            {
+                return null;
+            }
+
+            existFlower.Name = request.Name;
+            existFlower.TName = _transliterationService.ToUrlFriendly(request.Name);
+            existFlower.Price = request.Price;
+            existFlower.Description = request.Description != null ? request.Description : String.Empty;
+            existFlower.InStock = request.InStock;
+
+            if (request.ImageFile != null)
+            {
+                var imageUploadResult = await _imageService
+                    .UploadAsync(request.ImageFile);
+                if (imageUploadResult.Success)
+                {
+                    await _imageService.DeleteAsync(existFlower.Image.FileName);
+                    existFlower.Image = imageUploadResult.Image;
+                }
+            }
+
+            if (request.ParentId.HasValue)
+            {
+                var parent = await _flowerRepository
+                    .GetByIdAsync(request.ParentId.Value, CancellationToken.None);
+
+                if (parent != null)
+                    existFlower.FlowerParent = parent;
+            }
+            if (request.ChildrensIds?.Any() == true)
+            {
+                var childrens = await _flowerRepository
+                    .GetFlowersByIdsAsync(request.ChildrensIds);
+                existFlower.FlowerChildrens = childrens.ToList();
+            }
+            var result = await _flowerRepository.UpdateAsync(existFlower);
+            var mapflower = _mapper.Map<FlowerDetail>(existFlower);
+            return mapflower;
+        }
+
+        public async Task<IEnumerable<T>> GetAllFlowersAsync<T>(CancellationToken ct)
+        {
+            var flowers = await _flowerRepository.GetAllAsync(ct);
+            var mapData = _mapper.Map<IEnumerable<T>>(flowers);
             
             return mapData;
+        }
+
+        public async Task<PaginatedResult<T>> GetFlowersWithPaginationAsync<T>(int pageNumber, int pageSize, CancellationToken ct)
+        {
+            var flowers = await _flowerRepository
+                .GetFlowersWithPaginationAsync(pageNumber, pageSize, ct);
+            var totalFlowersCount = await _flowerRepository.GetTotalCountAsync(ct);
+
+            var mapFlowers = _mapper.Map<IEnumerable<T>>(flowers);
+
+            return new PaginatedResult<T>
+            {
+                Items = mapFlowers.ToList(),
+                TotalCount = totalFlowersCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            }; 
         }
     }
 }

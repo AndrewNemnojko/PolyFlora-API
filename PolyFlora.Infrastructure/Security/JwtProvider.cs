@@ -1,24 +1,67 @@
-﻿using PolyFlora.Application.Interfaces.Auth;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
+using PolyFlora.Application.Interfaces.Auth;
 using PolyFlora.Core.Models;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace PolyFlora.Infrastructure.Security
 {
     public class JwtProvider : IJwtProvider
     {
-        public string GenerateRefreshToken()
+        private readonly IConfiguration _configuration;
+        public JwtProvider(IConfiguration configuration)
         {
-            throw new NotImplementedException();
+            _configuration = configuration;
         }
-
         public string GenerateToken(User user)
         {
-            throw new NotImplementedException();
-        }
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var key = Encoding.ASCII.GetBytes(_configuration["JWT:SecretKey"]!);
 
+            var lifetimeMinutes = int.Parse(_configuration["JWT:LifeTimeMinutes"]!);
+
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(new Claim[]
+                {
+                    new Claim(ClaimTypes.Email, user.Email),
+                    new Claim(ClaimTypes.Role, user.Role.ToString()),
+                }),
+                IssuedAt = DateTime.UtcNow,
+                Issuer = _configuration["JWT:Issuer"],
+                Audience = _configuration["JWT:Audience"],
+                Expires = DateTime.UtcNow.AddMinutes(lifetimeMinutes),
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature),
+            };
+
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            return tokenHandler.WriteToken(token);
+        }
+        public string GenerateRefreshToken()
+        {
+            var randomNumber = new byte[32];
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(randomNumber);
+                return Convert.ToBase64String(randomNumber);
+            }
+        }
         public ClaimsPrincipal? GetTokenPrincipal(string token)
         {
-            throw new NotImplementedException();
+            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration.GetSection("Jwt:SecretKey").Value!));
+
+            var validation = new TokenValidationParameters
+            {
+                IssuerSigningKey = securityKey,
+                ValidateLifetime = false,
+                ValidateActor = false,
+                ValidateIssuer = false,
+                ValidateAudience = false,
+            };
+            return new JwtSecurityTokenHandler().ValidateToken(token, validation, out _);
         }
     }
 }

@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Http;
 
 namespace PolyFlora.Application.DTOs.Flower
 {
-    public record FlowerCreateRequest
+    public record FlowerRequest
     (
         string Name,
         string? Description,

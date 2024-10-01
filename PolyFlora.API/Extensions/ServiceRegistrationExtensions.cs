@@ -19,16 +19,18 @@ namespace PolyFlora.API.Extensions
         {            
             //Repository Services
             services.AddScoped<IFlowerRepository, FlowerRepository>();
+            services.AddScoped<IUserRepository, UserRepository>();
 
             //Utilites Services
             services.AddScoped<ICacheService, RedisCacheService>();
+            services.AddScoped<IPasswordHasher, PasswordHasher>();
             services.AddScoped<IJwtProvider, JwtProvider>();
             services.AddScoped<TransliterationService>();
             services.AddScoped<IImageService, ImageService>();
 
             //Domain Services
             services.AddScoped<FlowerService>();
-
+            services.AddScoped<AuthService>();
             
 
             //Swagger exts
@@ -36,7 +38,7 @@ namespace PolyFlora.API.Extensions
             {
                 c.SwaggerDoc("v1", new OpenApiInfo
                 {
-                    Title = "JWT Auth Sample",
+                    Title = "PolyFlora API",
                     Version = "v1"
                 });
                 c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme()

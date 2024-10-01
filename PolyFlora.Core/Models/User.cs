@@ -7,7 +7,7 @@ namespace PolyFlora.Core.Models
     public class User
     {
         public Guid Id { get; set; }
-        public string Name { get; set; } = null!;
+        public string Name { get; set; } = String.Empty;
         public string Email { get; set; } = null!;
         public Image? Image { get; set; }
         public string Adress { get; set; } = String.Empty;
