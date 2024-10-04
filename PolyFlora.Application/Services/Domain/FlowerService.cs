@@ -5,6 +5,7 @@ using PolyFlora.Application.DTOs.Flower;
 using PolyFlora.Application.Interfaces.Repositories;
 using PolyFlora.Application.Interfaces.Utilites;
 using PolyFlora.Application.Services.Utilites;
+using PolyFlora.Core.Enums;
 using PolyFlora.Core.Interfaces;
 using PolyFlora.Core.Models;
 
@@ -31,52 +32,95 @@ namespace PolyFlora.Application.Services.Domain
             _imageService = imageService;
         }
 
-        public async Task<FlowerDetail?> GetFlowerByIdAsync(Guid id, CancellationToken ct, bool cache = false)
+        public async Task<FlowerDetail?> GetFlowerByIdAsync(Guid id, string langCode, CancellationToken ct, bool cache = false)
         {
             if (cache)
             {
                 var cachedModel = await _cacheService
-                    .GetAsync<FlowerDetail>($"flower-id-{id}");
+                    .GetAsync<FlowerDetail>($"flower-id-{langCode}-{id}");
                 if (cachedModel != null)
                 {
                     return cachedModel;
                 }
             }
-            var dbModel = await _flowerRepository.GetByIdAsync(id, ct);
+            if (!Enum.TryParse(typeof(LanguageCode), langCode.ToUpper(), out var languageCode))
+            {
+                throw new ArgumentException
+                    ($"Invalid language code: {langCode}. " +
+                    $"Allowed values are: {string.Join(", ", Enum.GetNames(typeof(LanguageCode)))}");
+            }
+            var dbModel = await _flowerRepository
+                .GetByIdWithCultureAsync(id, (LanguageCode)languageCode, ct);
+
             var mapModel = _mapper.Map<FlowerDetail>(dbModel);
             if (dbModel != null && cache)
             {
-                await _cacheService.SetAsync($"flower-id-{id}", dbModel);
+                await _cacheService.SetAsync($"flower-id-{langCode}-{id}", dbModel);
             }
             return mapModel;
         }
 
-        public async Task<FlowerDetail?> GetFlowerByNameAsync(string tname, CancellationToken ct, bool cache = false)
+        public async Task<FlowerDetail?> GetFlowerByNameAsync(string tname, string langCode, CancellationToken ct, bool cache = false)
         {
             if (cache)
             {
                 var cachedModel = await _cacheService
-                    .GetAsync<FlowerDetail>($"flower-tname-{tname}");
+                    .GetAsync<FlowerDetail>($"flower-tname-{langCode}-{tname}");
                 if (cachedModel != null)
                 {
                     return cachedModel;
                 }
             }
-            var dbModel = await _flowerRepository.GetByNameAsync(tname, ct);
+            if (!Enum.TryParse(typeof(LanguageCode), langCode.ToUpper(), out var languageCode))
+            {
+                throw new ArgumentException
+                    ($"Invalid language code: {langCode}. " +
+                    $"Allowed values are: {string.Join(", ", Enum.GetNames(typeof(LanguageCode)))}");
+            }
+            var dbModel = await _flowerRepository
+                .GetByNameWithCultureAsync(tname, (LanguageCode)languageCode, ct);
+
             var mapModel = _mapper.Map<FlowerDetail>(dbModel);
+
             if (dbModel != null && cache)
             {
-                await _cacheService.SetAsync($"flower-tname-{tname}", dbModel);
+                await _cacheService.SetAsync($"flower-tname-{langCode}-{tname}", dbModel);
             }
             return mapModel;
         }
         
         public async Task<FlowerDetail?> CreateFlowerAsync(FlowerRequest request)
-        {            
-            var flower = _mapper.Map<Flower>(request);           
-            flower.TName = _transliterationService.ToUrlFriendly(request.Name);
+        {
+            var flower = new Flower();
 
-            if(request.ImageFile != null)
+            flower.Price = request.Price;
+            flower.InStock = request.InStock;
+            flower.TName = _transliterationService
+                .ToUrlFriendly(request.CultureDetails.First(x => x.TargCulture).Name);
+
+            foreach (var culture in request.CultureDetails)
+            {
+                if (!Enum.TryParse(typeof(LanguageCode), culture.LangCode.ToUpper(), out var languageCode))
+                {
+                    throw new ArgumentException
+                        ($"Invalid language code: {culture.LangCode}. " +
+                        $"Allowed values are: {string.Join(", ", Enum.GetNames(typeof(LanguageCode)))}");
+                }
+                
+                var newCulture = new FlowerCulture
+                {                  
+                    LanguageCode = (LanguageCode)languageCode,
+                    TargCulture = culture.TargCulture,
+                    Name = culture.Name,
+                    Description = culture.Description
+                };
+
+                flower.CultureDetails.Add(newCulture);               
+            }
+                                 
+            
+
+            if (request.ImageFile != null)
             {
                 var imageUploadResult = await _imageService
                     .UploadAsync(request.ImageFile);
@@ -94,12 +138,14 @@ namespace PolyFlora.Application.Services.Domain
                 if (parent != null)
                     flower.FlowerParent = parent;
             }
+
             if (request.ChildrensIds?.Any() == true)
             {
                 var childrens = await _flowerRepository
                     .GetFlowersByIdsAsync(request.ChildrensIds);
                 flower.FlowerChildrens = childrens.ToList();
             }
+
             var result = await _flowerRepository.AddAsync(flower);
             var mapflower = _mapper.Map<FlowerDetail>(result);
             return mapflower;
@@ -107,17 +153,49 @@ namespace PolyFlora.Application.Services.Domain
 
         public async Task<FlowerDetail?> ChangeFlowerAsync(Guid id, FlowerRequest request)
         {
-            var existFlower = await _flowerRepository.GetByIdAsync(id, CancellationToken.None);
+            var existFlower = await _flowerRepository
+                .GetByIdAsync(id, CancellationToken.None);
+
             if (existFlower == null)
             {
                 return null;
             }
 
-            existFlower.Name = request.Name;
-            existFlower.TName = _transliterationService.ToUrlFriendly(request.Name);
-            existFlower.Price = request.Price;
-            existFlower.Description = request.Description != null ? request.Description : String.Empty;
+            existFlower.TName = _transliterationService
+                .ToUrlFriendly(request.CultureDetails.First(x => x.TargCulture).Name);
+                       
+            existFlower.Price = request.Price;           
             existFlower.InStock = request.InStock;
+
+            foreach (var culture in request.CultureDetails)
+            {
+                if (!Enum.TryParse(typeof(LanguageCode), culture.LangCode.ToUpper(), out var languageCode))
+                {
+                    throw new ArgumentException
+                        ($"Invalid language code: {culture.LangCode}. " +
+                        $"Allowed values are: {string.Join(", ", Enum.GetNames(typeof(LanguageCode)))}");
+                }
+                var existingCulture = existFlower.CultureDetails
+                    .FirstOrDefault(c => c.LanguageCode.ToString() == culture.LangCode);
+
+                if (existingCulture != null)
+                {
+                    existingCulture.Name = culture.Name;
+                    existingCulture.TargCulture = culture.TargCulture;
+                    existingCulture.Description = culture.Description;
+                }
+                else
+                {
+                    var newCulture = new FlowerCulture
+                    {
+                        LanguageCode = (LanguageCode)languageCode,
+                        TargCulture = culture.TargCulture,
+                        Name = culture.Name,
+                        Description = culture.Description
+                    };
+                    existFlower.CultureDetails.Add(newCulture);
+                }
+            }
 
             if (request.ImageFile != null)
             {
@@ -138,12 +216,14 @@ namespace PolyFlora.Application.Services.Domain
                 if (parent != null)
                     existFlower.FlowerParent = parent;
             }
+
             if (request.ChildrensIds?.Any() == true)
             {
                 var childrens = await _flowerRepository
                     .GetFlowersByIdsAsync(request.ChildrensIds);
                 existFlower.FlowerChildrens = childrens.ToList();
             }
+
             var result = await _flowerRepository.UpdateAsync(existFlower);
             var mapflower = _mapper.Map<FlowerDetail>(existFlower);
             return mapflower;
@@ -153,14 +233,21 @@ namespace PolyFlora.Application.Services.Domain
         {
             var flowers = await _flowerRepository.GetAllAsync(ct);
             var mapData = _mapper.Map<IEnumerable<T>>(flowers);
-            
+          
             return mapData;
         }
 
-        public async Task<PaginatedResult<T>> GetFlowersWithPaginationAsync<T>(int pageNumber, int pageSize, CancellationToken ct)
+        public async Task<PaginatedResult<T>> GetFlowersWithPaginationAsync<T>(int pageNumber, int pageSize, string langCode, CancellationToken ct)
         {
+            if (!Enum.TryParse(typeof(LanguageCode), langCode.ToUpper(), out var languageCode))
+            {
+                throw new ArgumentException
+                    ($"Invalid language code: {langCode}. " +
+                    $"Allowed values are: {string.Join(", ", Enum.GetNames(typeof(LanguageCode)))}");
+            }
             var flowers = await _flowerRepository
-                .GetFlowersWithPaginationAsync(pageNumber, pageSize, ct);
+                .GetFlowersWithPaginationAsync(pageNumber, pageSize, (LanguageCode)languageCode, ct);
+
             var totalFlowersCount = await _flowerRepository.GetTotalCountAsync(ct);
 
             var mapFlowers = _mapper.Map<IEnumerable<T>>(flowers);

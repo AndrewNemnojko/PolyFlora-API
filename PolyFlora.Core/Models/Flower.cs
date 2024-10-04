@@ -3,11 +3,11 @@ namespace PolyFlora.Core.Models
 {
     public class Flower
     {
-        public Guid Id { get; set; }
-        public string Name { get; set; } = string.Empty;
+        public Guid Id { get; set; }        
         public string TName { get; set; } = string.Empty; //TransliteratedName
-        public Image? Image {  get; set; } 
-        public string Description { get; set; } = string.Empty;
+        public ICollection<FlowerCulture> CultureDetails { get; set; }
+            = new List<FlowerCulture>();
+        public Image? Image {  get; set; }      
         public decimal Price { get; set; }
         public int InStock { get; set; }
         public DateTime TimeStamp { get; set; } = DateTime.UtcNow;

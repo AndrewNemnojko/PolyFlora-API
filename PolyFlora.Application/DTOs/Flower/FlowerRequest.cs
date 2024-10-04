@@ -5,12 +5,11 @@ namespace PolyFlora.Application.DTOs.Flower
 {
     public record FlowerRequest
     (
-        string Name,
-        string? Description,
-        decimal Price,
-        int InStock,
-        IFormFile? ImageFile,
-        Guid? ParentId,
-        IList<Guid>? ChildrensIds
+       ICollection<CultureDetail> CultureDetails,
+       decimal Price,
+       int InStock,
+       IFormFile? ImageFile,
+       Guid? ParentId,
+       ICollection<Guid>? ChildrensIds
     );
 }
